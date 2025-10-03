@@ -1,0 +1,14 @@
+[Unit]
+Description=Run Panel
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Restart=always
+RestartSec=5
+# binaries go in /var/bin because other dirs are immutable in bootable containers
+ExecStart=/usr/bin/panel start --binary-dir /var/bin --treasury-home /var/treasury --supervisor-home /var/supervisor -vv --web-dir /www
+
+[Install]
+WantedBy=multi-user.target

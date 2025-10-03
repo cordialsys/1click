@@ -1,0 +1,5 @@
+package: admin
+generate:
+  models: true
+output-options:
+  initialism-overrides: false

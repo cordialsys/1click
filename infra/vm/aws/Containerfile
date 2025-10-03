@@ -1,0 +1,14 @@
+
+FROM quay.io/centos-bootc/centos-bootc:stream9
+
+# inject our configuration
+# COPY etc /etc/
+
+RUN sudo dnf install -y epel-release
+RUN sudo dnf -y update
+RUN dnf install -y htop
+
+# install ssm agent so that we can connect over AWS dashboard without SSH.
+# Note that the VM will need an ec2 service role with AmazonSSMManagedInstanceCore permission.
+RUN dnf install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_$(uname -m | sed 's/aarch64/arm64/'| sed 's/x86_64/amd64/')/amazon-ssm-agent.rpm
+RUN systemctl enable amazon-ssm-agent

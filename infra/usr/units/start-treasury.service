@@ -1,0 +1,16 @@
+[Unit]
+Description=Start Treasury once all participants are ready
+After=docker.service
+
+[Service]
+Type=oneshot
+
+Restart=on-failure
+RestartSec=15
+
+# keep retrying '/complete' until it succeeds (i.e. all peers have posted their keys)
+ExecStartPre=curl -X POST --fail-with-body localhost:7666/v1/treasury/complete
+ExecStart=systemctl enable treasury.service --now
+
+[Install]
+WantedBy=multi-user.target

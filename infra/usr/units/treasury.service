@@ -1,0 +1,17 @@
+[Unit]
+Description=Run Treasury
+After=docker.service
+
+[Service]
+EnvironmentFile=/etc/panel/env
+User=cordial
+Type=simple
+Restart=always
+RestartSec=5
+
+# Ensure that the backups keys in panel are always used.
+ExecStartPre=/usr/bin/panel sync-config
+ExecStart=/var/bin/cord supervise run
+
+[Install]
+WantedBy=multi-user.target

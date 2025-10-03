@@ -1,0 +1,12 @@
+[Unit]
+Description=Configure Docker
+Before=docker.service
+Wants=docker.service
+
+[Service]
+PassEnvironment=HOST_OS
+Type=oneshot
+ExecStart=/usr/units/configure-docker.sh
+
+[Install]
+WantedBy=multi-user.target

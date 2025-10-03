@@ -1,0 +1,18 @@
+[Unit]
+Description=Setup Treasury Blueprint
+After=network.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/panel/env
+# Without this LD_LIBRARY_PATH + cordial user, `treasury` will panic due to some bundled libc issue.
+Environment=LD_LIBRARY_PATH=/var/bin
+User=cordial
+
+Restart=no
+
+ExecStartPre=bash -c "rm -rf ~/.local/share/treasury"
+ExecStart=/var/bin/treasury script -f /etc/panel/blueprint.csl
+
+[Install]
+WantedBy=multi-user.target

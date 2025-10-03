@@ -1,0 +1,8 @@
+data
+node_modules
+.next
+web/out
+web/.env.local
+output/
+image.tar.gz
+.env

@@ -1,0 +1,3 @@
+docker:
+  us-docker.pkg.dev:
+    use-sigstore-attachments: true

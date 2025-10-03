@@ -1,0 +1,7 @@
+*.Dockerfile
+*.Containerfile
+data/
+README.md
+.env
+.env*
+*.tar.gz
