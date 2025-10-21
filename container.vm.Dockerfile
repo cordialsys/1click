@@ -42,7 +42,7 @@ RUN chown -R otelcol-contrib /var/home/otelcol-contrib
 
 # packages we like (note: no neovim as it pulls in like 500MB)
 run dnf -y install epel-release
-RUN dnf -y install zsh git htop tmux fd-find bat ripgrep wget jq util-linux-user
+RUN dnf -y install zsh git htop tmux fd-find bat ripgrep wget jq util-linux-user wireguard-tools
 RUN dnf clean all
 
 # use /var/bin for dynamically downloaded prod binaries (e.g. /usr/bin is immutable)
