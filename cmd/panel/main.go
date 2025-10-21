@@ -85,7 +85,7 @@ func StartCmd() *cobra.Command {
 	return cmd
 }
 
-func ActivateCmd() *cobra.Command {
+func ActivateAllCmd() *cobra.Command {
 	var apiKeyRef string
 	var connector bool
 	// var apiNode bool
@@ -94,9 +94,11 @@ func ActivateCmd() *cobra.Command {
 	var version string
 	var noOtel bool
 
+	var skipNetwork bool
+
 	var cmd = &cobra.Command{
-		Use:          "activate",
-		Short:        "Activate the panel server",
+		Use:          "all",
+		Short:        "Perform full activation (api-key, backup, binaries, network, treasury)",
 		SilenceUsage: true,
 
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -210,12 +212,16 @@ func ActivateCmd() *cobra.Command {
 			fmt.Println("Binaries installed.")
 
 			// 4. activate the network
-			fmt.Println("Activating network...")
-			err = panelClient.ActivateNetwork()
-			if err != nil {
-				return err
+			if !skipNetwork {
+				fmt.Println("Activating network...")
+				err = panelClient.ActivateNetwork()
+				if err != nil {
+					return err
+				}
+				fmt.Println("Network activated.")
+			} else {
+				fmt.Println("Network skipped.")
 			}
-			fmt.Println("Network activated.")
 
 			treasuryService, err := panelClient.GetService("treasury.service")
 			if err != nil {
@@ -270,6 +276,176 @@ func ActivateCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&baks, "bak", []string{}, "Backup key(s)")
 	cmd.Flags().StringVar(&version, "version", "latest", "Version of production binaries to install")
 	cmd.Flags().BoolVar(&noOtel, "no-otel", false, "Disable OTEL collection")
+	cmd.Flags().BoolVar(&skipNetwork, "skip-network", false, "Skip network setup")
+	return cmd
+}
+
+func ActivateApiKeyCmd() *cobra.Command {
+	var apiKeyRef string
+	var connector bool
+	var remote string
+
+	var cmd = &cobra.Command{
+		Use:          "api-key",
+		Short:        "Activate the API key",
+		SilenceUsage: true,
+
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var apiKey string
+			var err error
+
+			if apiKeyRef == "" {
+				var input string
+				for input == "" {
+					fmt.Print("Enter Activation API key: ")
+					fmt.Scanln(&input)
+					input = strings.TrimSpace(input)
+					apiKey = input
+				}
+			} else {
+				secretMaybe := secret.Secret(apiKeyRef)
+				if _, ok := secretMaybe.Type(); !ok {
+					// treat as literal
+					apiKey = apiKeyRef
+				} else {
+					apiKey, err = secretMaybe.Load()
+				}
+				if err != nil {
+					return fmt.Errorf("failed to load API key: %v", err)
+				}
+				if apiKey == "" {
+					return fmt.Errorf("API key reference resolved to an empty value")
+				}
+			}
+
+			// activate the API key
+			fmt.Println("Activating API key...")
+			var connectorInput *bool
+			if cmd.Flags().Lookup("connector").Changed {
+				// only pass if specified on CLI, so panel will otherwise default to the admin API.
+				connectorInput = &connector
+			}
+			err = panelClient.ActivateApiKey(apiKey, connectorInput)
+			if err != nil {
+				return err
+			}
+			fmt.Println("API key activated.")
+
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVar(&apiKeyRef, "api-key", "", "API key secret reference")
+	cmd.Flags().StringVar(&remote, "url", "http://localhost:7666", "URL of the panel server")
+	cmd.Flags().BoolVar(&connector, "connector", false, "Enable connector")
+	return cmd
+}
+
+func ActivateBinariesCmd() *cobra.Command {
+	var remote string
+	var version string
+
+	var cmd = &cobra.Command{
+		Use:          "binaries",
+		Short:        "Download and install Treasury binaries",
+		SilenceUsage: true,
+
+		RunE: func(cmd *cobra.Command, args []string) error {
+			fmt.Println("Installing production binaries...")
+			err := panelClient.ActivateBinaries(client.ActivateBinariesOptions{
+				Version: version,
+			})
+			if err != nil {
+				return err
+			}
+			fmt.Println("Binaries installed.")
+
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVar(&remote, "url", "http://localhost:7666", "URL of the panel server")
+	cmd.Flags().StringVar(&version, "version", "latest", "Version of production binaries to install")
+	return cmd
+}
+
+func ActivateBakCmd() *cobra.Command {
+	var remote string
+	var baks []string
+
+	var cmd = &cobra.Command{
+		Use:          "bak",
+		Short:        "Configure backup keys",
+		SilenceUsage: true,
+
+		RunE: func(cmd *cobra.Command, args []string) error {
+			panelInfo, err := panelClient.GetPanel()
+			if err != nil {
+				return err
+			}
+
+			if len(panelInfo.Baks) == 0 {
+				if len(baks) <= 0 {
+					sk := bak.GenerateEncryptionKey()
+					recipient := sk.Recipient()
+
+					fmt.Println("# Generating new backup key...")
+					fmt.Println("# You must save this somewhere safe")
+					fmt.Println("------- SECRET BACKUP PHRASE -------")
+					fmt.Println(strings.Join(sk.Words(), " "))
+					fmt.Println("------------------------------------")
+					fmt.Println("Public key:", recipient.String())
+					fmt.Println()
+					fmt.Print("Confirm (y/n): ")
+					var confirm string
+					fmt.Scanln(&confirm)
+					if strings.ToLower(confirm) != "y" {
+						return fmt.Errorf("cancelled")
+					}
+					fmt.Println()
+					baks = append(baks, recipient.String())
+				}
+				fmt.Println("Activating backup...")
+				bakObjs := make([]panel.Bak, len(baks))
+				for i := range baks {
+					bakObjs[i] = panel.Bak{
+						Key: baks[i],
+					}
+				}
+				err = panelClient.ActivateBackup(bakObjs)
+				if err != nil {
+					return err
+				}
+				fmt.Println("Backup activated.")
+			} else {
+				fmt.Println("Backup already activated.")
+				baks := []string{}
+				for _, bak := range panelInfo.Baks {
+					baks = append(baks, bak.Key)
+				}
+				fmt.Println("Backup keys: ", strings.Join(baks, ", "))
+				fmt.Println("To reset, run: `panel reset --force` and re-run activation.")
+			}
+
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVar(&remote, "url", "http://localhost:7666", "URL of the panel server")
+	cmd.Flags().StringSliceVar(&baks, "bak", []string{}, "Backup key(s)")
+	return cmd
+}
+
+func ActivateCmd() *cobra.Command {
+	var cmd = &cobra.Command{
+		Use:   "activate",
+		Short: "Activation commands for the panel server",
+	}
+
+	cmd.AddCommand(ActivateAllCmd())
+	cmd.AddCommand(ActivateApiKeyCmd())
+	cmd.AddCommand(ActivateBinariesCmd())
+	cmd.AddCommand(ActivateBakCmd())
 
 	return cmd
 }
