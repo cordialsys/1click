@@ -187,7 +187,8 @@ export default function ActivationPanel() {
     otelEnabled: boolean,
     binaryVersion: string,
     useDemoPolicy: boolean,
-    hasOpenImportForms: boolean
+    hasOpenImportForms: boolean,
+    skipNetwork: boolean
   ) => {
     // Check for open import forms first
     if (hasOpenImportForms) {
@@ -229,7 +230,8 @@ export default function ActivationPanel() {
       apiKey,
       generatedBackupKeys,
       otelEnabled,
-      binaryVersion
+      binaryVersion,
+      skipNetwork
     );
   };
 
@@ -241,7 +243,8 @@ export default function ActivationPanel() {
       nickname: string;
     }[],
     otelEnabled: boolean,
-    binaryVersion: string
+    binaryVersion: string,
+    skipNetwork: boolean
   ) => {
     setAutoRunning(true);
     setLoading(true);
@@ -271,15 +274,24 @@ export default function ActivationPanel() {
 
       await new Promise((resolve) => setTimeout(resolve, 500));
 
-      // Step 3: Network Setup
-      setCurrentAction("Setting up network connection...");
-      await panelApiClient.setupNetwork();
-      setStatus({
-        type: "success",
-        message: "Network configured successfully",
-      });
+      // Step 3: Network Setup (skip if requested)
+      if (!skipNetwork) {
+        setCurrentAction("Setting up network connection...");
+        await panelApiClient.setupNetwork();
+        setStatus({
+          type: "success",
+          message: "Network configured successfully",
+        });
 
-      await new Promise((resolve) => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      } else {
+        setStatus({
+          type: "success",
+          message: "Network setup skipped",
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
 
       const backupKeysLocked = panelInfo?.state !== "inactive";
 

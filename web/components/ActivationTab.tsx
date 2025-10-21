@@ -26,7 +26,8 @@ interface Props {
     otelEnabled: boolean,
     binaryVersion: string,
     useDemoPolicy: boolean,
-    hasOpenImportForms: boolean
+    hasOpenImportForms: boolean,
+    skipNetwork: boolean
   ) => Promise<void>;
 }
 
@@ -52,6 +53,7 @@ export default function ActivationTab({
   const [showEncryptionAtRest, setShowEncryptionAtRest] = useState(false);
   const [showInitialUsers, setShowInitialUsers] = useState(true);
   const [showApiKey, setShowApiKey] = useState(false);
+  const [skipNetwork, setSkipNetwork] = useState(false);
 
   const handleActivation = async () => {
     await handleApiKeyActivation(
@@ -61,7 +63,8 @@ export default function ActivationTab({
       otelEnabled,
       binaryVersion,
       useDemoPolicy,
-      hasOpenImportForms
+      hasOpenImportForms,
+      skipNetwork
     );
   };
 
@@ -264,6 +267,34 @@ export default function ActivationTab({
                         }}
                       >
                         Enable OTEL (Observability)
+                      </label>
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: "1rem" }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        id="skipNetwork"
+                        checked={skipNetwork}
+                        onChange={(e) => setSkipNetwork(e.target.checked)}
+                        disabled={autoRunning}
+                        style={{ marginRight: "8px" }}
+                      />
+                      <label
+                        htmlFor="skipNetwork"
+                        style={{
+                          cursor: autoRunning ? "not-allowed" : "pointer",
+                          fontSize: "0.95rem",
+                          userSelect: "none",
+                        }}
+                      >
+                        Skip Network
                       </label>
                     </div>
                   </div>
